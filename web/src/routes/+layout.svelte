@@ -22,6 +22,7 @@
     CommandPaletteProvider,
     CORE_PAGE_COMMANDS,
     defaultProvider,
+    logoManager,
     MOBILE_APP_COMMANDS,
     modalManager,
     OTHER_SITE_COMMANDS,
@@ -35,6 +36,7 @@
     toastManager,
     TooltipProvider,
   } from '@immich/ui';
+  import needhamCloudLogo from '$lib/assets/needham-cloud-inline-dark.svg';
   import { En } from 'media-chrome/lang/en';
   import { addTranslation } from 'media-chrome/utils/i18n';
   import { onMount, type Snippet } from 'svelte';
@@ -169,6 +171,14 @@
 
   toastManager.setOptions({ class: 'top-16 fixed' });
 
+  logoManager.setLogo({
+    ...logoManager.logos,
+    unstacked: {
+      light: needhamCloudLogo,
+      dark: needhamCloudLogo,
+    },
+  });
+
   onMount(() => {
     const element = document.querySelector('#stencil');
     element?.remove();
@@ -235,7 +245,7 @@
 <VersionAnnouncement />
 
 <svelte:head>
-  <title>{page.data.meta?.title || 'Web'} - Immich</title>
+  <title>{page.data.meta?.title || 'Web'} - Needham Cloud</title>
   <link rel="manifest" href="/manifest.json" crossorigin="use-credentials" />
   <meta name="theme-color" content="white" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="black" media="(prefers-color-scheme: dark)" />
