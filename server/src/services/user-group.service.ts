@@ -15,7 +15,9 @@ import { findOrFail } from 'src/utils/misc';
 @Injectable()
 export class UserGroupService extends BaseService {
   async getAll(auth: AuthDto): Promise<UserGroupResponseDto[]> {
-    const groups = await this.userGroupRepository.getByUserId(auth.user.id);
+    const groups = auth.user.isAdmin
+      ? await this.userGroupRepository.getAll()
+      : await this.userGroupRepository.getByUserId(auth.user.id);
     const result: UserGroupResponseDto[] = [];
     for (const group of groups) {
       const members = await this.userGroupRepository.getMembers(group.id);

@@ -26,6 +26,15 @@ export class UserGroupRepository {
       .executeTakeFirst();
   }
 
+  @GenerateSql()
+  getAll() {
+    return this.db
+      .selectFrom('user_group')
+      .selectAll('user_group')
+      .orderBy('user_group.name', 'asc')
+      .execute();
+  }
+
   @GenerateSql({ params: [DummyValue.UUID] })
   getByUserId(userId: string) {
     return this.db
