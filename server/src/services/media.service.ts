@@ -187,6 +187,8 @@ export class MediaService extends BaseService {
     const fullsizeDimensions = generated?.fullsizeDimensions ?? getDimensions(asset.exifInfo!);
     await this.assetRepository.update({ id: asset.id, ...fullsizeDimensions });
 
+    await this.jobRepository.queue({ name: JobName.AssetDetectFaces, data: { id } });
+
     return JobStatus.Success;
   }
 
