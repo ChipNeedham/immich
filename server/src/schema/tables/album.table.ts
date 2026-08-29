@@ -4,7 +4,6 @@ import {
   DeleteDateColumn,
   ForeignKeyColumn,
   Generated,
-  Index,
   PrimaryGeneratedColumn,
   Table,
   Timestamp,
@@ -58,6 +57,5 @@ export class AlbumTable {
     onDelete: 'SET NULL',
     onUpdate: 'CASCADE',
   })
-  @Index({ where: '"ownerGroupId" IS NOT NULL' })
   ownerGroupId!: string | null;
 }

@@ -85,7 +85,7 @@ const isAlbumOwned = (ownerId: string) => (eb: ExpressionBuilder<DB, 'album'>) =
     eb.exists(
       eb
         .selectFrom('user_group_member')
-        .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId' as any)
+        .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId')
         .where('user_group_member.userId', '=', ownerId),
     ),
   ]);
@@ -192,28 +192,31 @@ export class AlbumRepository {
   }
 
   private buildAlbumBaseQuery(ownerId: string, { isOwned, isShared }: { isOwned?: boolean; isShared?: boolean }) {
+    const isGroupMember = (eb: ExpressionBuilder<DB, 'album'>) =>
+      eb.exists(
+        eb
+          .selectFrom('user_group_member')
+          .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+          .where('user_group_member.userId', '=', ownerId),
+      );
+
     return this.db
       .selectFrom('album')
       .leftJoin('album_user', (join) =>
         join.onRef('album_user.albumId', '=', 'album.id').on('album_user.userId', '=', ownerId),
       )
-      .leftJoin('user_group_member', (join) =>
-        join
-          .onRef('user_group_member.groupId', '=', 'album.ownerGroupId' as any)
-          .on('user_group_member.userId', '=', ownerId),
-      )
       .where('album.deletedAt', 'is', null)
       .where((eb) =>
         eb.or([
           eb('album_user.userId', 'is not', null),
-          eb('user_group_member.userId', 'is not', null),
+          isGroupMember(eb),
         ]),
       )
       .$if(isOwned === true, (qb) =>
         qb.where((eb) =>
           eb.or([
             eb('album_user.role', '=', sql.lit(AlbumUserRole.Owner)),
-            eb('user_group_member.userId', 'is not', null),
+            isGroupMember(eb),
           ]),
         ),
       )
@@ -221,7 +224,7 @@ export class AlbumRepository {
         qb.where((eb) =>
           eb.and([
             eb.or([eb('album_user.role', 'is', null), eb('album_user.role', '!=', sql.lit(AlbumUserRole.Owner))]),
-            eb('user_group_member.userId', 'is', null),
+            eb.not(isGroupMember(eb)),
           ]),
         ),
       )

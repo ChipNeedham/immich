@@ -33,6 +33,7 @@ export class AlbumFactory {
       order: AssetOrder.Desc,
       updatedAt: newDate(),
       updateId: newUuidV7(),
+      ownerGroupId: null,
       ...dto,
     }).owner();
   }

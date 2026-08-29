@@ -285,6 +285,8 @@ export interface DB {
 
   user: UserTable;
   user_audit: UserAuditTable;
+  user_group: UserGroupTable;
+  user_group_member: UserGroupMemberTable;
   user_metadata: UserMetadataTable;
   user_metadata_audit: UserMetadataAuditTable;
 
