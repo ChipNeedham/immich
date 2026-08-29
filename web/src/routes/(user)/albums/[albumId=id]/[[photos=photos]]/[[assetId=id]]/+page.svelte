@@ -591,8 +591,7 @@
                     text={$t('transfer_ownership')}
                     onClick={async () => {
                       const transferred = await modalManager.show(AlbumTransferOwnershipModal, {
-                        albumId: album.id,
-                        albumName: album.albumName,
+                        album,
                       });
                       if (transferred) {
                         album = await getAlbumInfo({ id: album.id });
