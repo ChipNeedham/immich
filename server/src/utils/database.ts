@@ -259,7 +259,14 @@ export function withFacesAndPeople({ viewingUserId, withHidden, withDeletedFace 
               .selectAll('person')
               .whereRef('person.personGroupId', '=', 'asset_face.personGroupId')
               .$if(!viewingUserId, (qb) => qb.whereRef('person.ownerId', '=', 'asset.ownerId'))
-              .$if(!!viewingUserId, (qb) => qb.where('person.ownerId', '=', viewingUserId!))
+              .$if(!!viewingUserId, (qb) =>
+                qb
+                  .where((eb) =>
+                    eb.or([eb('person.ownerId', '=', viewingUserId!), eb(eb.ref('person.ownerId'), '=', eb.ref('asset.ownerId'))]),
+                  )
+                  .orderBy(sql`"person"."ownerId" = ${viewingUserId!}`, 'desc')
+                  .limit(1),
+              )
               .as('person'),
           (join) => join.onTrue(),
         )
@@ -486,7 +493,31 @@ export function searchAssetBuilderLegacy(kysely: Kysely<DB>, options: AssetSearc
     .$if(!!options.checksum, (qb) => qb.where('asset.checksum', '=', options.checksum!))
     .$if(!!options.id, (qb) => qb.where('asset.id', '=', asUuid(options.id!)))
     .$if(!!options.libraryId, (qb) => qb.where('asset.libraryId', '=', asUuid(options.libraryId!)))
-    .$if(!!options.userIds, (qb) => qb.where('asset.ownerId', '=', anyUuid(options.userIds!)))
+    .$if(!!options.userIds, (qb) =>
+      qb.where((eb) =>
+        eb.or([
+          eb('asset.ownerId', '=', anyUuid(options.userIds!)),
+          ...(options.viewingUserId
+            ? [
+                eb.exists(
+                  eb
+                    .selectFrom('album_asset')
+                    .innerJoin('album', (join) =>
+                      join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+                    )
+                    .innerJoin('user_group_member', (join) =>
+                      join
+                        .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+                        .on('user_group_member.userId', '=', options.viewingUserId!),
+                    )
+                    .whereRef('album_asset.assetId', '=', 'asset.id')
+                    .where('album.ownerGroupId', 'is not', null),
+                ),
+              ]
+            : []),
+        ]),
+      ),
+    )
     .$if(!!options.encodedVideoPath, (qb) =>
       qb
         .innerJoin('asset_file', (join) =>
@@ -795,7 +826,26 @@ function branchPredicates(eb: AssetExpressionBuilder, branch: SearchFilterBranch
 export function searchAssetBuilder(kysely: Kysely<DB>, options: AssetSearchBuilderV3Options, scope: AssetSearchScope) {
   const filter = options.filter ?? {};
   const branches = filter.or ?? [];
-  const ownershipPredicate = (eb: AssetExpressionBuilder) => eb('asset.ownerId', '=', anyUuid(scope.userIds));
+  const ownershipPredicate = (eb: AssetExpressionBuilder) =>
+    scope.viewingUserId
+      ? eb.or([
+          eb('asset.ownerId', '=', anyUuid(scope.userIds)),
+          eb.exists(
+            eb
+              .selectFrom('album_asset')
+              .innerJoin('album', (join) =>
+                join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+              )
+              .innerJoin('user_group_member', (join) =>
+                join
+                  .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+                  .on('user_group_member.userId', '=', scope.viewingUserId!),
+              )
+              .whereRef('album_asset.assetId', '=', 'asset.id')
+              .where('album.ownerGroupId', 'is not', null),
+          ),
+        ])
+      : eb('asset.ownerId', '=', anyUuid(scope.userIds));
   // search universe: own+partner assets unless album-confined, which searches the albums instead;
   // ownership lands nowhere (top level confined), per unconfined branch, or hoisted globally
   const topConfined = isAlbumConfined(filter);
