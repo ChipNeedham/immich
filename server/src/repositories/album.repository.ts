@@ -504,4 +504,19 @@ export class AlbumRepository {
       .onConflict((oc) => oc.doNothing())
       .execute();
   }
+
+  @GenerateSql({ params: [DummyValue.UUID] })
+  async getGroupMemberUserIdsByAssetId(assetId: string): Promise<string[]> {
+    const results = await this.db
+      .selectFrom('user_group_member')
+      .innerJoin('album', 'album.ownerGroupId', 'user_group_member.groupId')
+      .innerJoin('album_asset', 'album_asset.albumId', 'album.id')
+      .where('album_asset.assetId', '=', assetId)
+      .where('album.deletedAt', 'is', null)
+      .select('user_group_member.userId')
+      .distinct()
+      .execute();
+
+    return results.map((r) => r.userId);
+  }
 }

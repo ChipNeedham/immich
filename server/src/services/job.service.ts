@@ -134,7 +134,7 @@ export class JobService extends BaseService {
         const edits = await this.assetEditRepository.getWithSyncInfo(item.data.id);
 
         if (asset) {
-          this.websocketRepository.clientSend('AssetEditReadyV2', asset.ownerId, {
+          const payload = {
             asset: {
               id: asset.id,
               ownerId: asset.ownerId,
@@ -158,7 +158,16 @@ export class JobService extends BaseService {
               isEdited: asset.isEdited,
             },
             edit: edits,
-          });
+          };
+
+          this.websocketRepository.clientSend('AssetEditReadyV2', asset.ownerId, payload);
+
+          const groupMemberIds = await this.albumRepository.getGroupMemberUserIdsByAssetId(asset.id);
+          for (const userId of groupMemberIds) {
+            if (userId !== asset.ownerId) {
+              this.websocketRepository.clientSend('AssetEditReadyV2', userId, payload);
+            }
+          }
         }
 
         break;
