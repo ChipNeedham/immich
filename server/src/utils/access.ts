@@ -320,18 +320,24 @@ const checkOtherAccess = async (access: AccessRepository, request: OtherAccessRe
     }
 
     case Permission.PersonCreate: {
-      return access.person.checkFaceOwnerAccess(auth.user.id, ids);
+      const isOwner = await access.person.checkFaceOwnerAccess(auth.user.id, ids);
+      const isGroupAlbumOwner = await access.person.checkFaceGroupAlbumOwnerAccess(auth.user.id, setDifference(ids, isOwner));
+      return setUnion(isOwner, isGroupAlbumOwner);
     }
 
     case Permission.PersonRead:
     case Permission.PersonUpdate:
     case Permission.PersonDelete:
     case Permission.PersonMerge: {
-      return await access.person.checkOwnerAccess(auth.user.id, ids);
+      const isOwner = await access.person.checkOwnerAccess(auth.user.id, ids);
+      const isGroupAlbumOwner = await access.person.checkGroupAlbumOwnerAccess(auth.user.id, setDifference(ids, isOwner));
+      return setUnion(isOwner, isGroupAlbumOwner);
     }
 
     case Permission.PersonReassign: {
-      return access.person.checkFaceOwnerAccess(auth.user.id, ids);
+      const isOwner = await access.person.checkFaceOwnerAccess(auth.user.id, ids);
+      const isGroupAlbumOwner = await access.person.checkFaceGroupAlbumOwnerAccess(auth.user.id, setDifference(ids, isOwner));
+      return setUnion(isOwner, isGroupAlbumOwner);
     }
 
     case Permission.ClusterGroupRead: {

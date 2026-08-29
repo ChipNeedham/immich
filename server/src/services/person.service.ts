@@ -60,7 +60,6 @@ export class PersonService extends BaseService {
 
     if (closestPersonId) {
       const person = await this.personRepository.getByGroupId({
-        ownerId: auth.user.id,
         personGroupId: closestPersonId,
       });
       if (!person?.faceAssetId) {
@@ -169,7 +168,7 @@ export class PersonService extends BaseService {
 
   async getThumbnail(auth: AuthDto, personGroupId: string): Promise<ImmichFileResponse> {
     await this.requireAccess({ auth, permission: Permission.PersonRead, ids: [personGroupId] });
-    const person = await this.personRepository.getByGroupId({ ownerId: auth.user.id, personGroupId });
+    const person = await this.personRepository.getByGroupId({ personGroupId });
     if (!person || !person.thumbnailPath) {
       throw new NotFoundException();
     }
@@ -658,7 +657,7 @@ export class PersonService extends BaseService {
   }
 
   private findOrFail(auth: AuthDto, personGroupId: string) {
-    return findOrFail(() => this.personRepository.getByGroupId({ ownerId: auth.user.id, personGroupId }), 'Person');
+    return findOrFail(() => this.personRepository.getByGroupId({ personGroupId }), 'Person');
   }
 
   // TODO return a asset face response

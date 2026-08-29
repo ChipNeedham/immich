@@ -627,6 +627,63 @@ class PersonAccess {
       .execute()
       .then((faces) => new Set(faces.map((face) => face.id)));
   }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
+  async checkGroupAlbumOwnerAccess(userId: string, personGroupIds: Set<string>) {
+    if (personGroupIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('person')
+      .select('person.personGroupId')
+      .innerJoin('asset_face', 'asset_face.personGroupId', 'person.personGroupId')
+      .innerJoin('album_asset', 'album_asset.assetId', 'asset_face.assetId')
+      .innerJoin('album', (join) =>
+        join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+      )
+      .where('person.personGroupId', 'in', [...personGroupIds])
+      .where('album.ownerGroupId', 'is not', null)
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('user_group_member')
+            .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+            .where('user_group_member.userId', '=', userId),
+        ),
+      )
+      .execute()
+      .then((persons) => new Set(persons.map((person) => person.personGroupId)));
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
+  async checkFaceGroupAlbumOwnerAccess(userId: string, assetFaceIds: Set<string>) {
+    if (assetFaceIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('asset_face')
+      .select('asset_face.id')
+      .innerJoin('album_asset', 'album_asset.assetId', 'asset_face.assetId')
+      .innerJoin('album', (join) =>
+        join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+      )
+      .where('asset_face.id', 'in', [...assetFaceIds])
+      .where('album.ownerGroupId', 'is not', null)
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('user_group_member')
+            .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+            .where('user_group_member.userId', '=', userId),
+        ),
+      )
+      .execute()
+      .then((faces) => new Set(faces.map((face) => face.id)));
+  }
 }
 
 class PartnerAccess {

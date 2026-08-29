@@ -67,6 +67,7 @@ export type GetFacesOptions = WithPersonOptions & { isVisible?: boolean };
 
 /** a person is identified by its owner and the group it belongs to */
 export type PersonId = { ownerId: string; personGroupId: string };
+export type PersonLookup = { ownerId?: string; personGroupId: string };
 
 export type ReassignCluster = { userId: string; newClusterId: string };
 
@@ -244,7 +245,25 @@ export class PersonRepository {
           .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
           .on('asset.deletedAt', 'is', null),
       )
-      .where('person.ownerId', '=', userId)
+      .where((eb) =>
+        eb.or([
+          eb('person.ownerId', '=', userId),
+          eb.exists(
+            eb
+              .selectFrom('album_asset')
+              .innerJoin('album', (join) =>
+                join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+              )
+              .innerJoin('user_group_member', (join) =>
+                join
+                  .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+                  .on('user_group_member.userId', '=', userId),
+              )
+              .whereRef('album_asset.assetId', '=', 'asset_face.assetId')
+              .where('album.ownerGroupId', 'is not', null),
+          ),
+        ]),
+      )
       .where('asset_face.deletedAt', 'is', null)
       .where('asset_face.isVisible', 'is', true)
       .orderBy('person.isHidden', 'asc')
@@ -396,12 +415,12 @@ export class PersonRepository {
   }
 
   @GenerateSql({ params: [{ ownerId: DummyValue.UUID, personGroupId: DummyValue.UUID }] })
-  getByGroupId({ ownerId, personGroupId }: PersonId) {
+  getByGroupId({ ownerId, personGroupId }: PersonLookup) {
     return this.db //
       .selectFrom('person')
       .selectAll('person')
       .where('person.personGroupId', '=', personGroupId)
-      .where('person.ownerId', '=', ownerId)
+      .$if(!!ownerId, (qb) => qb.where('person.ownerId', '=', ownerId!))
       .executeTakeFirst();
   }
 
@@ -413,7 +432,26 @@ export class PersonRepository {
       )
       .selectFrom(['similarity_threshold', 'person'])
       .selectAll('person')
-      .where('person.ownerId', '=', userId)
+      .where((eb) =>
+        eb.or([
+          eb('person.ownerId', '=', userId),
+          eb.exists(
+            eb
+              .selectFrom('asset_face')
+              .innerJoin('album_asset', 'album_asset.assetId', 'asset_face.assetId')
+              .innerJoin('album', (join) =>
+                join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+              )
+              .innerJoin('user_group_member', (join) =>
+                join
+                  .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+                  .on('user_group_member.userId', '=', userId),
+              )
+              .whereRef('asset_face.personGroupId', '=', 'person.personGroupId')
+              .where('album.ownerGroupId', 'is not', null),
+          ),
+        ]),
+      )
       .where(() => sql`f_unaccent("person"."name") %> f_unaccent(${personName})`)
       .orderBy(sql`f_unaccent("person"."name") <->>> f_unaccent(${personName})`)
       .limit(100)
@@ -427,7 +465,29 @@ export class PersonRepository {
       .selectFrom('person')
       .select(['person.personGroupId', 'person.name'])
       .distinctOn((eb) => eb.fn('lower', ['person.name']))
-      .where((eb) => eb.and([eb('person.ownerId', '=', userId), eb('person.name', '!=', '')]))
+      .where((eb) =>
+        eb.and([
+          eb('person.name', '!=', ''),
+          eb.or([
+            eb('person.ownerId', '=', userId),
+            eb.exists(
+              eb
+                .selectFrom('asset_face')
+                .innerJoin('album_asset', 'album_asset.assetId', 'asset_face.assetId')
+                .innerJoin('album', (join) =>
+                  join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+                )
+                .innerJoin('user_group_member', (join) =>
+                  join
+                    .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+                    .on('user_group_member.userId', '=', userId),
+                )
+                .whereRef('asset_face.personGroupId', '=', 'person.personGroupId')
+                .where('album.ownerGroupId', 'is not', null),
+            ),
+          ]),
+        ]),
+      )
       .$if(!withHidden, (qb) => qb.where('person.isHidden', '=', false))
       .execute();
   }
@@ -441,7 +501,26 @@ export class PersonRepository {
           .onRef('asset.id', '=', 'asset_face.assetId')
           .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
           .on('asset.deletedAt', 'is', null)
-          .on((eb) => eb.or([eb('asset.ownerId', '=', asUuid(userId)), inSharedAlbum(eb, userId)])),
+          .on((eb) =>
+            eb.or([
+              eb('asset.ownerId', '=', asUuid(userId)),
+              inSharedAlbum(eb, userId),
+              eb.exists(
+                eb
+                  .selectFrom('album_asset')
+                  .innerJoin('album', (join) =>
+                    join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+                  )
+                  .innerJoin('user_group_member', (join) =>
+                    join
+                      .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+                      .on('user_group_member.userId', '=', asUuid(userId)),
+                  )
+                  .whereRef('album_asset.assetId', '=', 'asset.id')
+                  .where('album.ownerGroupId', 'is not', null),
+              ),
+            ]),
+          ),
       )
       .select((eb) => eb.fn.count(eb.fn('distinct', ['asset.id'])).as('count'))
       .where('asset_face.deletedAt', 'is', null)
@@ -477,7 +556,26 @@ export class PersonRepository {
             ),
         ),
       )
-      .where('person.ownerId', '=', userId)
+      .where((eb) =>
+        eb.or([
+          eb('person.ownerId', '=', userId),
+          eb.exists(
+            eb
+              .selectFrom('asset_face as af')
+              .innerJoin('album_asset', 'album_asset.assetId', 'af.assetId')
+              .innerJoin('album', (join) =>
+                join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+              )
+              .innerJoin('user_group_member', (join) =>
+                join
+                  .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+                  .on('user_group_member.userId', '=', userId),
+              )
+              .whereRef('af.personGroupId', '=', 'person.personGroupId')
+              .where('album.ownerGroupId', 'is not', null),
+          ),
+        ]),
+      )
       .select((eb) => eb.fn.coalesce(eb.fn.countAll<number>(), zero).as('total'))
       .select((eb) => eb.fn.coalesce(eb.fn.countAll<number>().filterWhere('isHidden', '=', true), zero).as('hidden'))
       .executeTakeFirstOrThrow();
