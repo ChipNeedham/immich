@@ -16,6 +16,7 @@ import type {
   UserAdminResponseDto,
   WorkflowResponseDto,
 } from '@immich/sdk';
+import type { UserGroupResponseDto } from '$lib/api/user-group.api';
 import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
 import { BaseEventManager } from '$lib/utils/base-event-manager.svelte';
 import type { TreeNode } from '$lib/utils/tree-utils';
@@ -97,6 +98,10 @@ export type Events = {
   WorkflowDelete: [WorkflowResponseDto];
 
   ReleaseEvent: [ReleaseEventV1];
+
+  UserGroupCreate: [UserGroupResponseDto];
+  UserGroupUpdate: [UserGroupResponseDto];
+  UserGroupDelete: [{ id: string }];
 
   WebsocketConnect: [];
 };

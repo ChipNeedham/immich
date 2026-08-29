@@ -1,4 +1,7 @@
+import { Selectable } from 'kysely';
 import { createZodDto } from 'nestjs-zod';
+import { UserGroupMemberTable } from 'src/schema/tables/user-group-member.table';
+import { UserGroupTable } from 'src/schema/tables/user-group.table';
 import { isoDatetimeToDate } from 'src/validation';
 import z from 'zod';
 
@@ -48,7 +51,7 @@ const UserGroupResponseSchema = z
 
 const TransferAlbumOwnershipSchema = z
   .object({
-    groupId: z.uuidv4().optional().describe('Transfer ownership to this user group'),
+    groupId: z.uuidv7().optional().describe('Transfer ownership to this user group'),
     userId: z.uuidv4().optional().describe('Transfer ownership to this user'),
   })
   .refine((data) => (data.groupId ? !data.userId : !!data.userId), {
@@ -64,19 +67,8 @@ export class UserGroupResponseDto extends createZodDto(UserGroupResponseSchema) 
 export class UserGroupMemberResponseDto extends createZodDto(UserGroupMemberResponseSchema) {}
 export class TransferAlbumOwnershipDto extends createZodDto(TransferAlbumOwnershipSchema) {}
 
-export type UserGroupRow = {
-  id: string;
-  name: string;
-  createdById: string;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type UserGroupMemberRow = {
-  groupId: string;
-  userId: string;
-  createdAt: Date;
-};
+export type UserGroupRow = Selectable<UserGroupTable>;
+export type UserGroupMemberRow = Selectable<UserGroupMemberTable>;
 
 export function mapUserGroup(group: UserGroupRow, members?: UserGroupMemberRow[]): UserGroupResponseDto {
   return {

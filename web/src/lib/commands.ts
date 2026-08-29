@@ -1,5 +1,6 @@
 import { defaultProvider, screencastManager, themeManager, ThemePreference, type ActionItem } from '@immich/ui';
 import {
+  mdiAccountGroupOutline,
   mdiAccountMultipleOutline,
   mdiAccountOutline,
   mdiArchiveArrowDownOutline,
@@ -72,6 +73,12 @@ export const getPagesProvider = ($t: MessageFormatter) => {
       description: $t('admin.maintenance_settings_description'),
       icon: mdiWrench,
       onAction: () => goto(Route.systemMaintenance()),
+    },
+    {
+      title: $t('user_groups'),
+      description: $t('user_groups_page_description'),
+      icon: mdiAccountGroupOutline,
+      onAction: () => goto(Route.userGroups()),
     },
   ].map((route) => ({ ...route, $if: () => authManager.authenticated && authManager.user.isAdmin }));
 

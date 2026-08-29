@@ -6,7 +6,15 @@
   import { sidebarStore } from '$lib/stores/sidebar.svelte';
   import type { HeaderButtonActionItem } from '$lib/types';
   import { AppShell, AppShellHeader, AppShellSidebar, MenuItemType, NavbarItem, type BreadcrumbItem } from '@immich/ui';
-  import { mdiAccountMultipleOutline, mdiBookshelf, mdiCog, mdiServer, mdiTrayFull, mdiWrench } from '@mdi/js';
+  import {
+    mdiAccountGroupOutline,
+    mdiAccountMultipleOutline,
+    mdiBookshelf,
+    mdiCog,
+    mdiServer,
+    mdiTrayFull,
+    mdiWrench,
+  } from '@mdi/js';
   import type { Snippet } from 'svelte';
   import { t } from 'svelte-i18n';
 
@@ -29,6 +37,7 @@
   >
     <div class="flex flex-col gap-1 pe-4 pt-8">
       <NavbarItem title={$t('users')} href={Route.users()} icon={mdiAccountMultipleOutline} />
+      <NavbarItem title={$t('user_groups')} href={Route.userGroups()} icon={mdiAccountGroupOutline} />
       <NavbarItem title={$t('external_libraries')} href={Route.libraries()} icon={mdiBookshelf} />
       <NavbarItem title={$t('admin.queues')} href={Route.queues()} icon={mdiTrayFull} />
       <NavbarItem title={$t('settings')} href={Route.systemSettings()} icon={mdiCog} />

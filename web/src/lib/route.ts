@@ -130,6 +130,12 @@ export const Route = {
   // tags
   tags: (params?: { path?: string }) => '/tags' + asQueryString(params),
 
+  // user groups
+  userGroups: () => '/admin/user-groups',
+  newUserGroup: () => '/admin/user-groups/new',
+  viewUserGroup: ({ id }: { id: string }) => `/admin/user-groups/${id}`,
+  editUserGroup: ({ id }: { id: string }) => `/admin/user-groups/${id}/edit`,
+
   // users
   users: () => '/admin/users',
   newUser: () => `/admin/users/new`,

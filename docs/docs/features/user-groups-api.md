@@ -180,9 +180,29 @@ The existing `AlbumResponseDto` now includes:
 }
 ```
 
+## Web UI
+
+The admin panel includes a **User Groups** management page at `/admin/user-groups`.
+
+### Pages
+
+- **List** (`/admin/user-groups`) — Table of all user groups with member count and context menu actions
+- **Create** (`/admin/user-groups/new`) — Modal form to create a new group
+- **Detail** (`/admin/user-groups/:id`) — Group details, member list with add/remove functionality
+- **Edit** (`/admin/user-groups/:id/edit`) — Modal form to rename a group
+
+### Navigation
+
+- Admin sidebar: "User Groups" link with group icon
+- Command palette: searchable "User Groups" entry
+
+### API Client
+
+Since the SDK is auto-generated and needs a running server, the web UI uses a manual API client at `web/src/lib/api/user-group.api.ts` that calls the backend endpoints directly using the SDK's configured fetch.
+
 ## Files Changed
 
-### New files (isolated from upstream)
+### New files — Server (isolated from upstream)
 - `server/src/schema/tables/user-group.table.ts`
 - `server/src/schema/tables/user-group-member.table.ts`
 - `server/src/schema/migrations/1788000000000-UserGroups.ts`
@@ -191,7 +211,24 @@ The existing `AlbumResponseDto` now includes:
 - `server/src/controllers/user-group.controller.ts`
 - `server/src/dtos/user-group.dto.ts`
 
-### Modified files (minimal, targeted edits)
+### New files — Web UI
+- `web/src/lib/api/user-group.api.ts` — Manual API client for user group endpoints
+- `web/src/lib/services/user-group.service.ts` — Service with actions and CRUD handlers
+- `web/src/lib/modals/UserGroupAddMembersModal.svelte` — Modal for adding members to a group
+- `web/src/routes/admin/user-groups/(list)/+layout.ts` — List data loader
+- `web/src/routes/admin/user-groups/(list)/+layout.svelte` — List page with table
+- `web/src/routes/admin/user-groups/(list)/+page.svelte` — Empty (list rendered by layout)
+- `web/src/routes/admin/user-groups/(list)/+page.ts` — Auth guard
+- `web/src/routes/admin/user-groups/(list)/new/+page.ts` — Auth guard
+- `web/src/routes/admin/user-groups/(list)/new/+page.svelte` — Create group form modal
+- `web/src/routes/admin/user-groups/[id]/+layout.ts` — Detail data loader
+- `web/src/routes/admin/user-groups/[id]/+layout.svelte` — Detail page with member management
+- `web/src/routes/admin/user-groups/[id]/+page.svelte` — Empty (detail rendered by layout)
+- `web/src/routes/admin/user-groups/[id]/+page.ts` — Auth guard
+- `web/src/routes/admin/user-groups/[id]/edit/+page.ts` — Auth guard
+- `web/src/routes/admin/user-groups/[id]/edit/+page.svelte` — Edit group name form modal
+
+### Modified files — Server (minimal, targeted edits)
 - `server/src/schema/tables/album.table.ts` — Added `ownerGroupId` column
 - `server/src/schema/index.ts` — Registered new tables
 - `server/src/schema/functions.ts` — Updated `album_user_delete` trigger to respect group ownership
@@ -204,3 +241,10 @@ The existing `AlbumResponseDto` now includes:
 - `server/src/dtos/album.dto.ts` — Added `ownerGroupId` to response DTO
 - `server/src/controllers/index.ts` — Registered `UserGroupController`
 - `server/src/services/index.ts` — Registered `UserGroupService`
+
+### Modified files — Web UI
+- `web/src/lib/route.ts` — Added `userGroups`, `newUserGroup`, `viewUserGroup`, `editUserGroup` routes
+- `web/src/lib/managers/event-manager.svelte.ts` — Added `UserGroupCreate`, `UserGroupUpdate`, `UserGroupDelete` events
+- `web/src/lib/components/layouts/AdminPageLayout.svelte` — Added "User Groups" sidebar link
+- `web/src/lib/commands.ts` — Added "User Groups" to command palette
+- `i18n/en.json` — Added user group translation strings

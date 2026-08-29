@@ -12,7 +12,7 @@ import {
 import { ApiTag, Permission } from 'src/enum';
 import { Auth, Authenticated } from 'src/middleware/auth.guard';
 import { UserGroupService } from 'src/services/user-group.service';
-import { UUIDParamDto } from 'src/validation';
+import { UUIDv7ParamDto } from 'src/validation';
 
 @ApiTags(ApiTag.UserGroups)
 @Controller('user-groups')
@@ -37,7 +37,7 @@ export class UserGroupController {
     description: 'Retrieve a user group by ID, including its members.',
     history: new HistoryBuilder().added('v3.3.0'),
   })
-  get(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<UserGroupResponseDto> {
+  get(@Auth() auth: AuthDto, @Param() { id }: UUIDv7ParamDto): Promise<UserGroupResponseDto> {
     return this.service.get(auth, id);
   }
 
@@ -61,7 +61,7 @@ export class UserGroupController {
   })
   update(
     @Auth() auth: AuthDto,
-    @Param() { id }: UUIDParamDto,
+    @Param() { id }: UUIDv7ParamDto,
     @Body() dto: UpdateUserGroupDto,
   ): Promise<UserGroupResponseDto> {
     return this.service.update(auth, id, dto);
@@ -75,7 +75,7 @@ export class UserGroupController {
     description: 'Delete a user group. Albums owned by this group will revert ownership to the group creator.',
     history: new HistoryBuilder().added('v3.3.0'),
   })
-  delete(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto): Promise<void> {
+  delete(@Auth() auth: AuthDto, @Param() { id }: UUIDv7ParamDto): Promise<void> {
     return this.service.delete(auth, id);
   }
 
@@ -88,7 +88,7 @@ export class UserGroupController {
   })
   addMembers(
     @Auth() auth: AuthDto,
-    @Param() { id }: UUIDParamDto,
+    @Param() { id }: UUIDv7ParamDto,
     @Body() dto: AddUserGroupMembersDto,
   ): Promise<UserGroupResponseDto> {
     return this.service.addMembers(auth, id, dto);
@@ -103,7 +103,7 @@ export class UserGroupController {
   })
   removeMembers(
     @Auth() auth: AuthDto,
-    @Param() { id }: UUIDParamDto,
+    @Param() { id }: UUIDv7ParamDto,
     @Body() dto: RemoveUserGroupMembersDto,
   ): Promise<UserGroupResponseDto> {
     return this.service.removeMembers(auth, id, dto);
