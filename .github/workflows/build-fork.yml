@@ -14,7 +14,7 @@ permissions:
   packages: write
 
 env:
-  IMAGE: ghcr.io/${{ github.repository_owner }}/immich-server
+  IMAGE: ghcr.io/chipneedham/immich-server
 
 jobs:
   build:
