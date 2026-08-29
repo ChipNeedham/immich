@@ -464,7 +464,7 @@
       ocrManager.hasOcrData,
   );
 
-  const { Tag, TagPeople } = $derived(getAssetActions($t, asset));
+  const { Tag, TagPeople } = $derived(getAssetActions($t, asset, album));
   const showDetailPanel = $derived(
     asset.hasMetadata &&
       $slideshowState === SlideshowState.None &&

@@ -7,6 +7,7 @@ import {
   runAssetJobs,
   updateAsset,
   type AssetJobsDto,
+  type AlbumResponseDto,
   type AssetResponseDto,
 } from '@immich/sdk';
 import { modalManager, toastManager, type ActionItem } from '@immich/ui';
@@ -51,6 +52,7 @@ import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
 import { Route } from '$lib/route';
 import { SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
 import { getAssetMediaUrl, getSharedLink, sleep } from '$lib/utils';
+import { isAlbumOwner } from '$lib/utils/album-utils';
 import { downloadUrl } from '$lib/utils';
 import { handleError } from '$lib/utils/handle-error';
 import { getFormatter } from '$lib/utils/i18n';
@@ -99,10 +101,14 @@ export const getAssetBulkActions = ($t: MessageFormatter) => {
   return { AddToAlbum, RefreshFacesJob, RefreshMetadataJob, RegenerateThumbnailJob, TranscodeVideoJob };
 };
 
-export const getAssetActions = ($t: MessageFormatter, asset: AssetResponseDto & { stackPrimaryAssetId?: string }) => {
+export const getAssetActions = (
+  $t: MessageFormatter,
+  asset: AssetResponseDto & { stackPrimaryAssetId?: string },
+  album?: AlbumResponseDto | null,
+) => {
   const sharedLink = getSharedLink();
   const authUser = authManager.authenticated ? authManager.user : undefined;
-  const isOwner = !!(authUser && authUser.id === asset.ownerId);
+  const isOwner = !!(authUser && (authUser.id === asset.ownerId || (album && isAlbumOwner(album, authUser.id))));
   const smartSearchEnabled = featureFlagsManager.value.smartSearch;
 
   const Share: ActionItem = {
