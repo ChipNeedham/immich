@@ -606,7 +606,10 @@ export class PersonService extends BaseService {
       if (!primaryPerson || primaryPerson.ownerId !== mergePerson.ownerId) {
         primaryPerson = await this.personRepository.getByGroupId({ ownerId: mergePerson.ownerId, personGroupId });
         if (!primaryPerson) {
-          continue;
+          primaryPerson = await this.personRepository.getByGroupId({ personGroupId });
+          if (!primaryPerson) {
+            continue;
+          }
         }
       }
 
@@ -638,13 +641,13 @@ export class PersonService extends BaseService {
       const mergeData: UpdateFacesData = {
         oldPersonGroupId: mergeId,
         newPersonGroupId: primaryPerson.personGroupId,
-        ownerId: primaryPerson.ownerId,
+        ownerId: mergePerson.ownerId,
       };
       this.logger.log(`Merging ${mergeName} into ${primaryPerson.name || primaryPerson.personGroupId}`);
 
       try {
         await this.personRepository.reassignFaces(mergeData);
-        await this.removeAllPersonGroups([mergeId], primaryPerson.ownerId);
+        await this.removeAllPersonGroups([mergeId], mergePerson.ownerId);
 
         this.logger.log(`Merged ${mergeName} into ${primaryPerson.name || primaryPerson.personGroupId}`);
         results.push({ id: mergeId, success: true });
