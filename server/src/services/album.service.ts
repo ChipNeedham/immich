@@ -181,16 +181,18 @@ export class AlbumService extends BaseService {
         throw new BadRequestException('User group not found');
       }
 
+      // Set ownerGroupId BEFORE removing the user owner, so the
+      // album_user_delete trigger sees ownerGroupId is set and skips deletion.
+      const updatedAlbum = await this.albumRepository.update(
+        id,
+        { ownerGroupId: dto.groupId },
+        auth.user.id,
+      );
+
       const currentOwner = album.albumUsers.find(({ role }) => role === AlbumUserRole.Owner);
       if (currentOwner) {
         await this.albumUserRepository.delete({ albumId: id, userId: currentOwner.user.id });
       }
-
-      const updatedAlbum = await this.albumRepository.update(
-        id,
-        { id, ownerGroupId: dto.groupId },
-        auth.user.id,
-      );
 
       return mapAlbum({ ...updatedAlbum, assets: album.assets });
     }
@@ -206,7 +208,7 @@ export class AlbumService extends BaseService {
       if (album.ownerGroupId) {
         await this.albumRepository.update(
           id,
-          { id, ownerGroupId: null },
+          { ownerGroupId: null },
           auth.user.id,
         );
       }

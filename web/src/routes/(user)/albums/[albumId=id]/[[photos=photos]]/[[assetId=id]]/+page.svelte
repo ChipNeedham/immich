@@ -36,6 +36,7 @@
   import { TimelineManager } from '$lib/managers/timeline-manager/timeline-manager.svelte';
   import type { TimelineAsset } from '$lib/managers/timeline-manager/types';
   import AlbumOptionsModal from '$lib/modals/AlbumOptionsModal.svelte';
+  import AlbumTransferOwnershipModal from '$lib/modals/AlbumTransferOwnershipModal.svelte';
   import { Route } from '$lib/route';
   import {
     getAlbumActions,
@@ -61,6 +62,7 @@
   import {
     mdiAccountEye,
     mdiAccountEyeOutline,
+    mdiAccountGroupOutline,
     mdiArrowLeft,
     mdiCogOutline,
     mdiDeleteOutline,
@@ -583,6 +585,19 @@
                 {/if}
 
                 {#if isOwned}
+                  <MenuOption
+                    icon={mdiAccountGroupOutline}
+                    text={$t('transfer_ownership')}
+                    onClick={async () => {
+                      const transferred = await modalManager.show(AlbumTransferOwnershipModal, {
+                        albumId: album.id,
+                        albumName: album.albumName,
+                      });
+                      if (transferred) {
+                        album = await getAlbumInfo({ id: album.id });
+                      }
+                    }}
+                  />
                   <MenuOption
                     icon={mdiDeleteOutline}
                     text={$t('delete_album')}
