@@ -1,6 +1,7 @@
 <script lang="ts">
   import AlbumCover from '$lib/components/album-page/AlbumCover.svelte';
   import { authManager } from '$lib/managers/auth-manager.svelte';
+  import { getAlbumOwnerUser } from '$lib/utils/album-utils';
   import { getContextMenuPositionFromEvent, type ContextMenuPosition } from '$lib/utils/context-menu';
   import { getShortDateRange } from '$lib/utils/date-time';
   import { type AlbumResponseDto } from '@immich/sdk';
@@ -85,8 +86,10 @@
       {/if}
 
       {#if showOwner}
-        {@const owner = album.albumUsers[0].user}
-        {#if owner.id === authManager.user.id}
+        {@const owner = getAlbumOwnerUser(album)}
+        {#if !owner}
+          <p>{$t('group_owned')}</p>
+        {:else if owner.id === authManager.user.id}
           <p>{$t('owned')}</p>
         {:else}
           <p>

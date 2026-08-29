@@ -4,6 +4,7 @@
   import { authManager } from '$lib/managers/auth-manager.svelte';
   import { Route } from '$lib/route';
   import { locale } from '$lib/stores/preferences.store';
+  import { getAlbumOwnerUser } from '$lib/utils/album-utils';
   import type { ContextMenuPosition } from '$lib/utils/context-menu';
   import { AlbumUserRole, type AlbumResponseDto } from '@immich/sdk';
   import { Icon } from '@immich/ui';
@@ -46,7 +47,7 @@
         title={album.albumUsers.find(({ user: { id } }) => id === authManager.user.id)?.role === AlbumUserRole.Owner
           ? $t('shared_by_you')
           : $t('shared_by_user', {
-              values: { user: album.albumUsers[0].user.name },
+              values: { user: getAlbumOwnerUser(album)?.name ?? $t('group_owned') },
             })}
       />
     {/if}

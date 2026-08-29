@@ -1,4 +1,4 @@
-import type { AlbumResponseDto } from '@immich/sdk';
+import { AlbumUserRole, type AlbumResponseDto } from '@immich/sdk';
 import * as sdk from '@immich/sdk';
 import { orderBy } from 'lodash-es';
 import { t } from 'svelte-i18n';
@@ -16,6 +16,18 @@ import {
   type AlbumViewSettings,
 } from '$lib/stores/preferences.store';
 import { handleError } from '$lib/utils/handle-error';
+
+export function getAlbumOwnerUser(album: AlbumResponseDto) {
+  return album.albumUsers.find(({ role }) => role === AlbumUserRole.Owner)?.user;
+}
+
+export function isAlbumOwner(album: AlbumResponseDto, userId: string): boolean {
+  const ownerUser = getAlbumOwnerUser(album);
+  if (ownerUser) {
+    return ownerUser.id === userId;
+  }
+  return !album.albumUsers.some(({ user: { id } }) => id === userId);
+}
 
 /**
  * -------------------------

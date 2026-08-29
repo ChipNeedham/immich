@@ -23,6 +23,7 @@
   import { getAssetActions } from '$lib/services/asset.service';
   import { getSharedLink, withoutIcons } from '$lib/utils';
   import type { OnUndoDelete } from '$lib/utils/actions';
+  import { isAlbumOwner as checkAlbumOwner } from '$lib/utils/album-utils';
   import { toTimelineAsset } from '$lib/utils/timeline-util';
   import {
     AssetTypeEnum,
@@ -65,7 +66,7 @@
   }: Props = $props();
 
   const isOwner = $derived(authManager.authenticated && asset.ownerId === authManager.user.id);
-  const isAlbumOwner = $derived(authManager.authenticated && album?.albumUsers[0].user.id === authManager.user.id);
+  const isAlbumOwner = $derived(authManager.authenticated && !!album && checkAlbumOwner(album, authManager.user.id));
   const isLocked = $derived(asset.visibility === AssetVisibility.Locked);
 
   const { Cast } = $derived(getGlobalActions($t));

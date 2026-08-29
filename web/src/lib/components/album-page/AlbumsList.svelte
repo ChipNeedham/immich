@@ -17,7 +17,7 @@
     SortOrder,
     type AlbumViewSettings,
   } from '$lib/stores/preferences.store';
-  import { getSelectedAlbumGroupOption, sortAlbums, stringToSortOrder, type AlbumGroup } from '$lib/utils/album-utils';
+  import { getAlbumOwnerUser, getSelectedAlbumGroupOption, isAlbumOwner, sortAlbums, stringToSortOrder, type AlbumGroup } from '$lib/utils/album-utils';
   import type { ContextMenuPosition } from '$lib/utils/context-menu';
   import { normalizeSearchString } from '$lib/utils/string-utils';
   import { AlbumUserRole, type AlbumResponseDto, type SharedLinkResponseDto } from '@immich/sdk';
@@ -95,12 +95,10 @@
     /** Group by owner */
     [AlbumGroupBy.Owner]: (order, albums): AlbumGroup[] => {
       const currentUserId = authManager.user.id;
-      const groupedByOwnerIds = groupBy(albums, (album) => album.albumUsers[0].user.id);
+      const groupedByOwnerIds = groupBy(albums, (album) => getAlbumOwnerUser(album)?.id ?? '__group__');
 
       const sortSign = order === SortOrder.Desc ? -1 : 1;
       const sortedByOwnerNames = Object.entries(groupedByOwnerIds).sort(([ownerIdA, albumsA], [ownerIdB, albumsB]) => {
-        // We make sure owned albums stay either at the beginning or the end
-        // of the list
         if (ownerIdA === currentUserId) {
           return -sortSign;
         }
@@ -108,14 +106,14 @@
           return sortSign;
         }
 
-        const ownerA = albumsA[0].albumUsers[0].user;
-        const ownerB = albumsB[0].albumUsers[0].user;
-        return ownerA.name.localeCompare(ownerB.name, $locale) * sortSign;
+        const ownerA = getAlbumOwnerUser(albumsA[0]);
+        const ownerB = getAlbumOwnerUser(albumsB[0]);
+        return (ownerA?.name ?? '').localeCompare(ownerB?.name ?? '', $locale) * sortSign;
       });
 
       return sortedByOwnerNames.map(([ownerId, albums]) => ({
         id: ownerId,
-        name: ownerId === currentUserId ? $t('my_albums') : albums[0].albumUsers[0].user.name,
+        name: ownerId === currentUserId ? $t('my_albums') : (getAlbumOwnerUser(albums[0])?.name ?? $t('group_owned')),
         albums,
       }));
     },
@@ -171,7 +169,7 @@
   });
 
   let showFullContextMenu = $derived(
-    allowEdit && selectedAlbum && selectedAlbum.albumUsers[0].user.id === authManager.user.id,
+    allowEdit && selectedAlbum && isAlbumOwner(selectedAlbum, authManager.user.id),
   );
 
   onMount(async () => {

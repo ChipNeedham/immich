@@ -418,9 +418,9 @@ export class AlbumService extends BaseService {
     await this.requireAccess({ auth, permission: Permission.AlbumShare, ids: [id] });
 
     const album = await this.findOrFail(id, userId, { withAssets: false });
-    const owner = album.albumUsers[0];
+    const owner = album.albumUsers.find(({ role }) => role === AlbumUserRole.Owner);
 
-    if (owner.user.id === userId) {
+    if (owner?.user.id === userId) {
       throw new BadRequestException('User is owner');
     }
 

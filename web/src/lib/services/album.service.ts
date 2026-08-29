@@ -26,7 +26,7 @@ import AlbumAddUsersModal from '$lib/modals/AlbumAddUsersModal.svelte';
 import AlbumOptionsModal from '$lib/modals/AlbumOptionsModal.svelte';
 import SharedLinkCreateModal from '$lib/modals/SharedLinkCreateModal.svelte';
 import { Route } from '$lib/route';
-import { createAlbumAndRedirect } from '$lib/utils/album-utils';
+import { createAlbumAndRedirect, isAlbumOwner } from '$lib/utils/album-utils';
 import { downloadArchive } from '$lib/utils/asset-utils';
 import { openFileUploadDialog } from '$lib/utils/file-uploader';
 import { handleError } from '$lib/utils/handle-error';
@@ -43,7 +43,7 @@ export const getAlbumsActions = ($t: MessageFormatter) => {
 };
 
 export const getAlbumActions = ($t: MessageFormatter, album: AlbumResponseDto) => {
-  const isOwned = album.albumUsers[0].user.id === authManager.user.id;
+  const isOwned = isAlbumOwner(album, authManager.user.id);
 
   const Share: ActionItem = {
     title: $t('share'),

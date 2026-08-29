@@ -48,6 +48,7 @@
   import { getAssetBulkActions } from '$lib/services/asset.service';
   import { SlideshowNavigation, SlideshowState, slideshowStore } from '$lib/stores/slideshow.store';
   import { handlePromiseError } from '$lib/utils';
+  import { isAlbumOwner } from '$lib/utils/album-utils';
   import { handleError } from '$lib/utils/handle-error';
   import { isAlbumsRoute, navigate, type AssetGridRouteSearchParams } from '$lib/utils/navigation';
   import { AlbumUserRole, AssetVisibility, getAlbumInfo, updateAlbumInfo, type AlbumResponseDto } from '@immich/sdk';
@@ -246,7 +247,7 @@
 
   onDestroy(() => activityManager.reset());
 
-  const isOwned = $derived(album.albumUsers[0].user.id === authManager.user.id);
+  const isOwned = $derived(isAlbumOwner(album, authManager.user.id));
 
   let showActivityStatus = $derived(
     album.albumUsers.length > 1 &&

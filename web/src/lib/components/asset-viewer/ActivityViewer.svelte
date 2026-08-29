@@ -12,7 +12,7 @@
   import { getAssetType } from '$lib/utils/asset-utils';
   import { handleError } from '$lib/utils/handle-error';
   import { isTenMinutesApart } from '$lib/utils/timesince';
-  import { ReactionType, type ActivityResponseDto, type AlbumUserResponseDto, type AssetTypeEnum } from '@immich/sdk';
+  import { AlbumUserRole, ReactionType, type ActivityResponseDto, type AlbumUserResponseDto, type AssetTypeEnum } from '@immich/sdk';
   import { Icon, IconButton, LoadingSpinner, Textarea, toastManager } from '@immich/ui';
   import { mdiClose, mdiDeleteOutline, mdiDotsVertical, mdiSend, mdiThumbUp } from '@mdi/js';
   import * as luxon from 'luxon';
@@ -56,7 +56,10 @@
   let previousAssetId: string | undefined = $state(assetId);
   let message = $state('');
   let isSendingMessage = $state(false);
-  const isAlbumOwner = $derived(albumUsers[0].user.id === authManager.user.id);
+  const isAlbumOwner = $derived(
+    albumUsers.find(({ role }) => role === AlbumUserRole.Owner)?.user.id === authManager.user.id
+    || !albumUsers.some(({ role }) => role === AlbumUserRole.Owner),
+  );
 
   const timeOptions: Intl.DateTimeFormatOptions = {
     year: 'numeric',
