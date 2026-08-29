@@ -179,6 +179,7 @@ export const AlbumResponseSchema = z
     isActivityEnabled: z.boolean().describe('Activity feed enabled'),
     order: AssetOrderSchema.optional(),
     contributorCounts: z.array(ContributorCountResponseSchema).optional(),
+    ownerGroupId: z.uuidv4().nullable().optional().describe('User group that owns this album, if group-owned'),
   })
   .meta({ id: 'AlbumResponseDto' });
 
@@ -219,6 +220,7 @@ export type MapAlbumDto = {
   id: string;
   isActivityEnabled: boolean;
   order: AssetOrder;
+  ownerGroupId?: string | null;
 };
 
 export const mapAlbum = (entity: MaybeDehydrated<MapAlbumDto>): AlbumResponseDto => {
@@ -262,5 +264,6 @@ export const mapAlbum = (entity: MaybeDehydrated<MapAlbumDto>): AlbumResponseDto
     assetCount: entity.assets?.length || 0,
     isActivityEnabled: entity.isActivityEnabled,
     order: entity.order,
+    ownerGroupId: entity.ownerGroupId ?? null,
   };
 };

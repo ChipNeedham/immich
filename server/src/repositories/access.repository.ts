@@ -95,6 +95,28 @@ class AlbumAccess {
 
   @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
   @ChunkedSet({ paramIndex: 1 })
+  async checkGroupOwnerAccess(userId: string, albumIds: Set<string>) {
+    if (albumIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('album')
+      .select('album.id')
+      .where('album.id', 'in', [...albumIds])
+      .where('album.ownerGroupId', 'is not', null)
+      .innerJoin('user_group_member', (join) =>
+        join
+          .onRef('user_group_member.groupId', '=', 'album.ownerGroupId' as any)
+          .on('user_group_member.userId', '=', userId),
+      )
+      .where('album.deletedAt', 'is', null)
+      .execute()
+      .then((albums) => new Set(albums.map((album) => album.id)));
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
   async checkSharedAlbumAccess(userId: string, albumIds: Set<string>, access: AlbumUserRole) {
     if (albumIds.size === 0) {
       return new Set<string>();
@@ -593,6 +615,42 @@ class TagAccess {
   }
 }
 
+class UserGroupAccess {
+  constructor(private db: Kysely<DB>) {}
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
+  async checkMemberAccess(userId: string, groupIds: Set<string>) {
+    if (groupIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('user_group_member')
+      .select('user_group_member.groupId')
+      .where('user_group_member.groupId', 'in', [...groupIds])
+      .where('user_group_member.userId', '=', userId)
+      .execute()
+      .then((rows) => new Set(rows.map((row) => row.groupId)));
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
+  async checkCreatorAccess(userId: string, groupIds: Set<string>) {
+    if (groupIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('user_group')
+      .select('user_group.id')
+      .where('user_group.id', 'in', [...groupIds])
+      .where('user_group.createdById', '=', userId)
+      .execute()
+      .then((rows) => new Set(rows.map((row) => row.id)));
+  }
+}
+
 class WorkflowAccess {
   constructor(private db: Kysely<DB>) {}
 
@@ -631,6 +689,7 @@ export class AccessRepository {
   stack: StackAccess;
   tag: TagAccess;
   timeline: TimelineAccess;
+  userGroup: UserGroupAccess;
   workflow: WorkflowAccess;
 
   constructor(@InjectKysely() db: Kysely<DB>) {
@@ -650,6 +709,7 @@ export class AccessRepository {
     this.stack = new StackAccess(db);
     this.tag = new TagAccess(db);
     this.timeline = new TimelineAccess(db);
+    this.userGroup = new UserGroupAccess(db);
     this.workflow = new WorkflowAccess(db);
   }
 }

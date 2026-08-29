@@ -74,13 +74,21 @@ const withAssets = (eb: ExpressionBuilder<DB, 'album'>) => {
 };
 
 const isAlbumOwned = (ownerId: string) => (eb: ExpressionBuilder<DB, 'album'>) =>
-  eb.exists(
-    eb
-      .selectFrom('album_user')
-      .whereRef('album_user.albumId', '=', 'album.id')
-      .where('album_user.role', '=', AlbumUserRole.Owner)
-      .where('album_user.userId', '=', ownerId),
-  );
+  eb.or([
+    eb.exists(
+      eb
+        .selectFrom('album_user')
+        .whereRef('album_user.albumId', '=', 'album.id')
+        .where('album_user.role', '=', AlbumUserRole.Owner)
+        .where('album_user.userId', '=', ownerId),
+    ),
+    eb.exists(
+      eb
+        .selectFrom('user_group_member')
+        .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId' as any)
+        .where('user_group_member.userId', '=', ownerId),
+    ),
+  ]);
 
 @Injectable()
 export class AlbumRepository {
@@ -186,12 +194,37 @@ export class AlbumRepository {
   private buildAlbumBaseQuery(ownerId: string, { isOwned, isShared }: { isOwned?: boolean; isShared?: boolean }) {
     return this.db
       .selectFrom('album')
-      .innerJoin('album_user', (join) =>
+      .leftJoin('album_user', (join) =>
         join.onRef('album_user.albumId', '=', 'album.id').on('album_user.userId', '=', ownerId),
       )
+      .leftJoin('user_group_member', (join) =>
+        join
+          .onRef('user_group_member.groupId', '=', 'album.ownerGroupId' as any)
+          .on('user_group_member.userId', '=', ownerId),
+      )
       .where('album.deletedAt', 'is', null)
-      .$if(isOwned === true, (qb) => qb.where('album_user.role', '=', sql.lit(AlbumUserRole.Owner)))
-      .$if(isOwned === false, (qb) => qb.where('album_user.role', '!=', sql.lit(AlbumUserRole.Owner)))
+      .where((eb) =>
+        eb.or([
+          eb('album_user.userId', 'is not', null),
+          eb('user_group_member.userId', 'is not', null),
+        ]),
+      )
+      .$if(isOwned === true, (qb) =>
+        qb.where((eb) =>
+          eb.or([
+            eb('album_user.role', '=', sql.lit(AlbumUserRole.Owner)),
+            eb('user_group_member.userId', 'is not', null),
+          ]),
+        ),
+      )
+      .$if(isOwned === false, (qb) =>
+        qb.where((eb) =>
+          eb.and([
+            eb.or([eb('album_user.role', 'is', null), eb('album_user.role', '!=', sql.lit(AlbumUserRole.Owner))]),
+            eb('user_group_member.userId', 'is', null),
+          ]),
+        ),
+      )
       .$if(isShared !== undefined, (qb) =>
         qb.where((eb) => {
           const isSharedAlbum = eb.or([

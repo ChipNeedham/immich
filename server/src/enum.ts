@@ -173,6 +173,13 @@ export enum Permission {
   ClusterGroupRequestRead = 'clusterGroupRequest.read',
   ClusterGroupRequestDelete = 'clusterGroupRequest.delete',
 
+  UserGroupCreate = 'userGroup.create',
+  UserGroupRead = 'userGroup.read',
+  UserGroupUpdate = 'userGroup.update',
+  UserGroupDelete = 'userGroup.delete',
+
+  AlbumTransferOwnership = 'album.transferOwnership',
+
   AdminConfigRead = 'adminConfig.read',
   AdminConfigUpdate = 'adminConfig.update',
 
@@ -1228,6 +1235,7 @@ export enum ApiTag {
   Notifications = 'Notifications',
   NotificationsAdmin = 'Notifications (admin)',
   ClusterGroups = 'Cluster groups',
+  UserGroups = 'User groups',
   Partners = 'Partners',
   People = 'People',
   Plugins = 'Plugins',

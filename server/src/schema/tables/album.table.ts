@@ -4,6 +4,7 @@ import {
   DeleteDateColumn,
   ForeignKeyColumn,
   Generated,
+  Index,
   PrimaryGeneratedColumn,
   Table,
   Timestamp,
@@ -12,6 +13,7 @@ import {
 import { UpdatedAtTrigger, UpdateIdColumn } from 'src/decorators';
 import { AssetOrder } from 'src/enum';
 import { AssetTable } from 'src/schema/tables/asset.table';
+import { UserGroupTable } from 'src/schema/tables/user-group.table';
 
 @Table({ name: 'album' })
 @UpdatedAtTrigger('album_updatedAt')
@@ -50,4 +52,12 @@ export class AlbumTable {
 
   @UpdateIdColumn({ index: true })
   updateId!: Generated<string>;
+
+  @ForeignKeyColumn(() => UserGroupTable, {
+    nullable: true,
+    onDelete: 'SET NULL',
+    onUpdate: 'CASCADE',
+  })
+  @Index({ where: '"ownerGroupId" IS NOT NULL' })
+  ownerGroupId!: string | null;
 }

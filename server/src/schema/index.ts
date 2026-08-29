@@ -85,6 +85,8 @@ import { TagTable } from 'src/schema/tables/tag.table';
 import { UserAuditTable } from 'src/schema/tables/user-audit.table';
 import { UserMetadataAuditTable } from 'src/schema/tables/user-metadata-audit.table';
 import { UserMetadataTable } from 'src/schema/tables/user-metadata.table';
+import { UserGroupMemberTable } from 'src/schema/tables/user-group-member.table';
+import { UserGroupTable } from 'src/schema/tables/user-group.table';
 import { UserTable } from 'src/schema/tables/user.table';
 import { VersionHistoryTable } from 'src/schema/tables/version-history.table';
 import {
@@ -153,6 +155,8 @@ export class ImmichDatabase {
     TagAssetTable,
     TagClosureTable,
     UserAuditTable,
+    UserGroupTable,
+    UserGroupMemberTable,
     UserMetadataTable,
     UserMetadataAuditTable,
     UserTable,

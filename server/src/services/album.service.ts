@@ -14,6 +14,7 @@ import {
 import { BulkIdErrorReason, BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { MapMarkerResponseDto } from 'src/dtos/map.dto';
+import { TransferAlbumOwnershipDto } from 'src/dtos/user-group.dto';
 import { AlbumUserRole, Permission } from 'src/enum';
 import { AlbumAssetCount, AlbumInfoOptions } from 'src/repositories/album.repository';
 import { BaseService } from 'src/services/base.service';
@@ -167,6 +168,78 @@ export class AlbumService extends BaseService {
   async delete(auth: AuthDto, id: string): Promise<void> {
     await this.requireAccess({ auth, permission: Permission.AlbumDelete, ids: [id] });
     await this.albumRepository.delete(id);
+  }
+
+  async transferOwnership(auth: AuthDto, id: string, dto: TransferAlbumOwnershipDto): Promise<AlbumResponseDto> {
+    await this.requireAccess({ auth, permission: Permission.AlbumTransferOwnership, ids: [id] });
+
+    const album = await this.findOrFail(id, auth.user.id, { withAssets: true });
+
+    if (dto.groupId) {
+      const group = await this.userGroupRepository.get(dto.groupId);
+      if (!group) {
+        throw new BadRequestException('User group not found');
+      }
+
+      const currentOwner = album.albumUsers.find(({ role }) => role === AlbumUserRole.Owner);
+      if (currentOwner) {
+        await this.albumUserRepository.delete({ albumId: id, userId: currentOwner.user.id });
+      }
+
+      const updatedAlbum = await this.albumRepository.update(
+        id,
+        { id, ownerGroupId: dto.groupId },
+        auth.user.id,
+      );
+
+      return mapAlbum({ ...updatedAlbum, assets: album.assets });
+    }
+
+    if (dto.userId) {
+      const user = await this.userRepository.get(dto.userId, {});
+      if (!user) {
+        throw new BadRequestException('User not found');
+      }
+
+      const currentOwner = album.albumUsers.find(({ role }) => role === AlbumUserRole.Owner);
+
+      if (album.ownerGroupId) {
+        await this.albumRepository.update(
+          id,
+          { id, ownerGroupId: null },
+          auth.user.id,
+        );
+      }
+
+      if (currentOwner) {
+        if (currentOwner.user.id === dto.userId) {
+          throw new BadRequestException('User is already the owner');
+        }
+        await this.albumUserRepository.update(
+          { albumId: id, userId: currentOwner.user.id },
+          { role: AlbumUserRole.Editor },
+        );
+      }
+
+      const existingUser = album.albumUsers.find(({ user: { id: uid } }) => uid === dto.userId);
+      if (existingUser) {
+        await this.albumUserRepository.update(
+          { albumId: id, userId: dto.userId },
+          { role: AlbumUserRole.Owner },
+        );
+      } else {
+        await this.albumUserRepository.create({
+          albumId: id,
+          userId: dto.userId,
+          role: AlbumUserRole.Owner,
+        });
+      }
+
+      const updatedAlbum = await this.findOrFail(id, auth.user.id, { withAssets: true });
+      return mapAlbum(updatedAlbum);
+    }
+
+    throw new BadRequestException('Either groupId or userId must be provided');
   }
 
   async addAssets(auth: AuthDto, id: string, dto: BulkIdsDto): Promise<BulkIdResponseDto[]> {

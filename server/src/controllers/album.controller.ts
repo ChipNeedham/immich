@@ -16,6 +16,7 @@ import {
 import { BulkIdResponseDto, BulkIdsDto } from 'src/dtos/asset-ids.response.dto';
 import { AuthDto } from 'src/dtos/auth.dto';
 import { MapMarkerResponseDto } from 'src/dtos/map.dto';
+import { TransferAlbumOwnershipDto } from 'src/dtos/user-group.dto';
 import { ApiTag, Permission } from 'src/enum';
 import { Auth, Authenticated } from 'src/middleware/auth.guard';
 import { AlbumService } from 'src/services/album.service';
@@ -97,6 +98,21 @@ export class AlbumController {
   })
   deleteAlbum(@Auth() auth: AuthDto, @Param() { id }: UUIDParamDto) {
     return this.service.delete(auth, id);
+  }
+
+  @Post(':id/transfer-ownership')
+  @Authenticated({ permission: Permission.AlbumTransferOwnership })
+  @Endpoint({
+    summary: 'Transfer album ownership',
+    description: 'Transfer ownership of an album to another user or a user group.',
+    history: new HistoryBuilder().added('v3.3.0'),
+  })
+  transferOwnership(
+    @Auth() auth: AuthDto,
+    @Param() { id }: UUIDParamDto,
+    @Body() dto: TransferAlbumOwnershipDto,
+  ): Promise<AlbumResponseDto> {
+    return this.service.transferOwnership(auth, id, dto);
   }
 
   @Authenticated({ permission: Permission.AlbumRead, sharedLink: true })

@@ -175,66 +175,80 @@ const checkOtherAccess = async (access: AccessRepository, request: OtherAccessRe
 
     case Permission.AlbumRead: {
       const isOwner = await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isGroupOwner = await access.album.checkGroupOwnerAccess(auth.user.id, setDifference(ids, isOwner));
       const isShared = await access.album.checkSharedAlbumAccess(
         auth.user.id,
-        setDifference(ids, isOwner),
+        setDifference(ids, isOwner, isGroupOwner),
         AlbumUserRole.Viewer,
       );
-      return setUnion(isOwner, isShared);
+      return setUnion(isOwner, isGroupOwner, isShared);
     }
 
     case Permission.AlbumAssetCreate: {
       const isOwner = await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isGroupOwner = await access.album.checkGroupOwnerAccess(auth.user.id, setDifference(ids, isOwner));
       const isShared = await access.album.checkSharedAlbumAccess(
         auth.user.id,
-        setDifference(ids, isOwner),
+        setDifference(ids, isOwner, isGroupOwner),
         AlbumUserRole.Editor,
       );
-      return setUnion(isOwner, isShared);
+      return setUnion(isOwner, isGroupOwner, isShared);
     }
 
     case Permission.AlbumUpdate: {
       const isOwner = await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isGroupOwner = await access.album.checkGroupOwnerAccess(auth.user.id, setDifference(ids, isOwner));
       const isShared = await access.album.checkSharedAlbumAccess(
         auth.user.id,
-        setDifference(ids, isOwner),
+        setDifference(ids, isOwner, isGroupOwner),
         AlbumUserRole.Editor,
       );
-      return setUnion(isOwner, isShared);
+      return setUnion(isOwner, isGroupOwner, isShared);
     }
 
     case Permission.AlbumDelete: {
-      return await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isOwner = await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isGroupOwner = await access.album.checkGroupOwnerAccess(auth.user.id, setDifference(ids, isOwner));
+      return setUnion(isOwner, isGroupOwner);
     }
 
     case Permission.AlbumShare: {
       const isOwner = await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isGroupOwner = await access.album.checkGroupOwnerAccess(auth.user.id, setDifference(ids, isOwner));
       const isShared = await access.album.checkSharedAlbumAccess(
         auth.user.id,
-        setDifference(ids, isOwner),
+        setDifference(ids, isOwner, isGroupOwner),
         AlbumUserRole.Editor,
       );
-      return setUnion(isOwner, isShared);
+      return setUnion(isOwner, isGroupOwner, isShared);
     }
 
     case Permission.AlbumDownload: {
       const isOwner = await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isGroupOwner = await access.album.checkGroupOwnerAccess(auth.user.id, setDifference(ids, isOwner));
       const isShared = await access.album.checkSharedAlbumAccess(
         auth.user.id,
-        setDifference(ids, isOwner),
+        setDifference(ids, isOwner, isGroupOwner),
         AlbumUserRole.Viewer,
       );
-      return setUnion(isOwner, isShared);
+      return setUnion(isOwner, isGroupOwner, isShared);
     }
 
     case Permission.AlbumAssetDelete: {
       const isOwner = await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isGroupOwner = await access.album.checkGroupOwnerAccess(auth.user.id, setDifference(ids, isOwner));
       const isShared = await access.album.checkSharedAlbumAccess(
         auth.user.id,
-        setDifference(ids, isOwner),
+        setDifference(ids, isOwner, isGroupOwner),
         AlbumUserRole.Editor,
       );
-      return setUnion(isOwner, isShared);
+      return setUnion(isOwner, isGroupOwner, isShared);
+    }
+
+    case Permission.AlbumTransferOwnership: {
+      const isOwner = await access.album.checkOwnerAccess(auth.user.id, ids);
+      const isGroupOwner = await access.album.checkGroupOwnerAccess(auth.user.id, setDifference(ids, isOwner));
+      return setUnion(isOwner, isGroupOwner);
     }
 
     case Permission.AssetUpload: {
@@ -357,6 +371,15 @@ const checkOtherAccess = async (access: AccessRepository, request: OtherAccessRe
     case Permission.WorkflowDelete:
     case Permission.WorkflowLogs: {
       return access.workflow.checkOwnerAccess(auth.user.id, ids);
+    }
+
+    case Permission.UserGroupRead: {
+      return access.userGroup.checkMemberAccess(auth.user.id, ids);
+    }
+
+    case Permission.UserGroupUpdate:
+    case Permission.UserGroupDelete: {
+      return access.userGroup.checkCreatorAccess(auth.user.id, ids);
     }
 
     default: {

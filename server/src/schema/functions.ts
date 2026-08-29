@@ -141,6 +141,7 @@ export const album_user_delete = registerFunction({
     BEGIN
       DELETE FROM "album"
       WHERE "album"."id" = OLD."albumId"
+      AND "album"."ownerGroupId" IS NULL
       AND NOT EXISTS (SELECT "albumId" FROM "album_user" WHERE "album_user"."albumId" = "album"."id" AND "album_user"."role" = 'owner');
 
       RETURN NULL;
