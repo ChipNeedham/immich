@@ -128,8 +128,10 @@
         return sharedAlbums;
       }
       default: {
+        const ownedIds = new Set(ownedAlbums.map(({ id }) => id));
         const nonOwnedAlbums = sharedAlbums.filter(
           (album) =>
+            !ownedIds.has(album.id) &&
             album.albumUsers.find(({ user: { id } }) => id === authManager.user.id)?.role !== AlbumUserRole.Owner,
         );
         return nonOwnedAlbums.length > 0 ? ownedAlbums.concat(nonOwnedAlbums) : ownedAlbums;
