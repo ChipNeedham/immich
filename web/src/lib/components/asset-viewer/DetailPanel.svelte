@@ -12,6 +12,7 @@
   import { Route } from '$lib/route';
   import { locale } from '$lib/stores/preferences.store';
   import { getAssetMediaUrl } from '$lib/utils';
+  import { isAlbumOwner as checkAlbumOwner } from '$lib/utils/album-utils';
   import { delay, getDimensions } from '$lib/utils/asset-utils';
   import { getByteUnitString } from '$lib/utils/byte-units';
   import { handleError } from '$lib/utils/handle-error';
@@ -42,7 +43,11 @@
 
   let { asset, currentAlbum = null }: Props = $props();
 
-  let isOwner = $derived(authManager.authenticated && authManager.user.id === asset.ownerId);
+  let isOwner = $derived(
+    authManager.authenticated &&
+      (authManager.user.id === asset.ownerId ||
+        (!!currentAlbum && checkAlbumOwner(currentAlbum, authManager.user.id))),
+  );
   let latlng = $derived(
     (() => {
       const lat = asset.exifInfo?.latitude;
@@ -163,7 +168,7 @@
         <Text size="small" color="muted">{$t('no_exif_info_available')}</Text>
       {/if}
 
-      <DetailPanelDate {asset} />
+      <DetailPanelDate {asset} {isOwner} />
 
       <div class="flex gap-4 py-4">
         <div><Icon icon={mdiImageOutline} size="24" /></div>

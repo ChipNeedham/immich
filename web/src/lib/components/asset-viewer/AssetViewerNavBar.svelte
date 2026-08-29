@@ -65,8 +65,9 @@
     setPlayOriginalVideo,
   }: Props = $props();
 
-  const isOwner = $derived(authManager.authenticated && asset.ownerId === authManager.user.id);
+  const isAssetOwner = $derived(authManager.authenticated && asset.ownerId === authManager.user.id);
   const isAlbumOwner = $derived(authManager.authenticated && !!album && checkAlbumOwner(album, authManager.user.id));
+  const isOwner = $derived(isAssetOwner || isAlbumOwner);
   const isLocked = $derived(asset.visibility === AssetVisibility.Locked);
 
   const { Cast } = $derived(getGlobalActions($t));

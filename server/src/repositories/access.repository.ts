@@ -105,10 +105,13 @@ class AlbumAccess {
       .select('album.id')
       .where('album.id', 'in', [...albumIds])
       .where('album.ownerGroupId', 'is not', null)
-      .innerJoin('user_group_member', (join) =>
-        join
-          .onRef('user_group_member.groupId', '=', 'album.ownerGroupId' as any)
-          .on('user_group_member.userId', '=', userId),
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('user_group_member')
+            .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+            .where('user_group_member.userId', '=', userId),
+        ),
       )
       .where('album.deletedAt', 'is', null)
       .execute()
@@ -187,8 +190,59 @@ class AssetAccess {
           eb('asset.livePhotoVideoId', '=', sql<string>`any(target.ids)`),
         ]),
       )
-      .where('user.id', '=', userId)
+      .where((eb) =>
+        eb.or([
+          eb('user.id', '=', userId),
+          eb.exists(
+            eb
+              .selectFrom('user_group_member')
+              .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+              .where('user_group_member.userId', '=', userId),
+          ),
+        ]),
+      )
       .where('album.deletedAt', 'is', null)
+      .execute()
+      .then((assets) => {
+        const allowedIds = new Set<string>();
+        for (const asset of assets) {
+          if (asset.id && assetIds.has(asset.id)) {
+            allowedIds.add(asset.id);
+          }
+          if (asset.livePhotoVideoId && assetIds.has(asset.livePhotoVideoId)) {
+            allowedIds.add(asset.livePhotoVideoId);
+          }
+        }
+        return allowedIds;
+      });
+  }
+
+  @GenerateSql({ params: [DummyValue.UUID, DummyValue.UUID_SET] })
+  @ChunkedSet({ paramIndex: 1 })
+  async checkGroupAlbumOwnerAccess(userId: string, assetIds: Set<string>) {
+    if (assetIds.size === 0) {
+      return new Set<string>();
+    }
+
+    return this.db
+      .selectFrom('album_asset')
+      .innerJoin('album', (join) =>
+        join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
+      )
+      .innerJoin('asset', (join) =>
+        join.onRef('asset.id', '=', 'album_asset.assetId').on('asset.deletedAt', 'is', null),
+      )
+      .select(['asset.id', 'asset.livePhotoVideoId'])
+      .where('album_asset.assetId', 'in', [...assetIds])
+      .where('album.ownerGroupId', 'is not', null)
+      .where((eb) =>
+        eb.exists(
+          eb
+            .selectFrom('user_group_member')
+            .whereRef('user_group_member.groupId', '=', 'album.ownerGroupId')
+            .where('user_group_member.userId', '=', userId),
+        ),
+      )
       .execute()
       .then((assets) => {
         const allowedIds = new Set<string>();
