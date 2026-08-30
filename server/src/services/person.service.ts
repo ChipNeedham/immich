@@ -564,11 +564,17 @@ export class PersonService extends BaseService {
 
       const clusterUserIds = await this.personRepository.getClusterGroupUserIds(clusterGroupId);
       if (clusterUserIds.length > 1) {
+        const otherUserIds = clusterUserIds.filter((uid) => uid !== ownerId);
         const existingName = person?.name || '';
-        await this.personRepository.ensurePersonRecords(
-          personGroupId,
-          clusterUserIds.filter((id) => id !== ownerId),
-          { name: existingName, faceAssetId: face.id },
+        await this.personRepository.ensurePersonRecords(personGroupId, otherUserIds, {
+          name: existingName,
+          faceAssetId: face.id,
+        });
+        await this.jobRepository.queueAll(
+          otherUserIds.map((uid) => ({
+            name: JobName.PersonGenerateThumbnail,
+            data: { ownerId: uid, personGroupId },
+          })),
         );
       }
 
@@ -694,6 +700,12 @@ export class PersonService extends BaseService {
             name: primaryPerson.name,
             faceAssetId: primaryPerson.faceAssetId ?? undefined,
           });
+          await this.jobRepository.queueAll(
+            clusterUserIds.map((uid) => ({
+              name: JobName.PersonGenerateThumbnail,
+              data: { ownerId: uid, personGroupId },
+            })),
+          );
           if (primaryPerson.name) {
             await this.personRepository.syncPersonName(personGroupId, { name: primaryPerson.name });
           }
