@@ -821,10 +821,12 @@ export class PersonRepository {
   getRandomFace(personGroupId: string) {
     return this.db
       .selectFrom('asset_face')
+      .innerJoin('asset', 'asset.id', 'asset_face.assetId')
       .selectAll('asset_face')
       .where('asset_face.personGroupId', '=', personGroupId)
       .where('asset_face.deletedAt', 'is', null)
       .where('asset_face.isVisible', 'is', true)
+      .orderBy('asset.fileCreatedAt', 'desc')
       .executeTakeFirst();
   }
 

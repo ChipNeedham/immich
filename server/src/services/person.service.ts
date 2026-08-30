@@ -562,6 +562,8 @@ export class PersonService extends BaseService {
         });
       }
 
+      await this.personRepository.reassignFaces({ faceIds: [id], newPersonGroupId: personGroupId });
+
       const clusterUserIds = await this.personRepository.getClusterGroupUserIds(clusterGroupId);
       if (clusterUserIds.length > 1) {
         const otherUserIds = clusterUserIds.filter((uid) => uid !== ownerId);
@@ -570,16 +572,29 @@ export class PersonService extends BaseService {
           name: existingName,
           faceAssetId: face.id,
         });
-        await this.jobRepository.queueAll(
-          otherUserIds.map((uid) => ({
-            name: JobName.PersonGenerateThumbnail,
-            data: { ownerId: uid, personGroupId },
-          })),
-        );
       }
 
-      this.logger.debug(`Assigning face ${id} to person group ${personGroupId}`);
-      await this.personRepository.reassignFaces({ faceIds: [id], newPersonGroupId: personGroupId });
+      const latestFace = await this.personRepository.getRandomFace(personGroupId);
+      if (latestFace && person?.faceAssetId !== latestFace.id) {
+        await this.personRepository.update({ ownerId, personGroupId, faceAssetId: latestFace.id });
+        await this.jobRepository.queue({
+          name: JobName.PersonGenerateThumbnail,
+          data: { ownerId, personGroupId },
+        });
+        if (clusterUserIds.length > 1) {
+          for (const uid of clusterUserIds.filter((u) => u !== ownerId)) {
+            await this.personRepository.update({ ownerId: uid, personGroupId, faceAssetId: latestFace.id });
+          }
+          await this.jobRepository.queueAll(
+            clusterUserIds
+              .filter((uid) => uid !== ownerId)
+              .map((uid) => ({
+                name: JobName.PersonGenerateThumbnail,
+                data: { ownerId: uid, personGroupId },
+              })),
+          );
+        }
+      }
     }
 
     return JobStatus.Success;
