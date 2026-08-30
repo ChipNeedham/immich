@@ -10,7 +10,7 @@ import { AssetFaceTable } from 'src/schema/tables/asset-face.table';
 import { FaceSearchTable } from 'src/schema/tables/face-search.table';
 import { PersonGroupTable } from 'src/schema/tables/person-group.table';
 import { PersonTable } from 'src/schema/tables/person.table';
-import { asUuid, dummy, inSharedAlbum, removeUndefinedKeys, withFilePath } from 'src/utils/database';
+import { asUuid, dummy, removeUndefinedKeys, withFilePath } from 'src/utils/database';
 import { paginationHelper, PaginationOptions } from 'src/utils/pagination';
 
 export interface PersonSearchOptions {
@@ -75,6 +75,9 @@ export type WithPersonOptions = {
   /** whose version of the person to select */
   viewingUserId: string;
 };
+
+const clusterGroupMemberIds = (userId: string) =>
+  sql<string>`(SELECT "id" FROM "user" WHERE "clusterGroupId" = (SELECT "clusterGroupId" FROM "user" WHERE "id" = ${asUuid(userId)}) AND "deletedAt" IS NULL)`;
 
 const withPerson = ({ viewingUserId }: WithPersonOptions) => {
   return (eb: ExpressionBuilder<DB, 'asset_face'>) =>
@@ -241,29 +244,11 @@ export class PersonRepository {
       .innerJoin('asset', (join) =>
         join
           .onRef('asset_face.assetId', '=', 'asset.id')
-          .onRef('asset.ownerId', '=', 'person.ownerId')
+          .on(sql`"asset"."ownerId" IN ${clusterGroupMemberIds(userId)}`)
           .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
           .on('asset.deletedAt', 'is', null),
       )
-      .where((eb) =>
-        eb.or([
-          eb('person.ownerId', '=', userId),
-          eb.exists(
-            eb
-              .selectFrom('album_asset')
-              .innerJoin('album', (join) =>
-                join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
-              )
-              .innerJoin('user_group_member', (join) =>
-                join
-                  .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
-                  .on('user_group_member.userId', '=', userId),
-              )
-              .whereRef('album_asset.assetId', '=', 'asset_face.assetId')
-              .where('album.ownerGroupId', 'is not', null),
-          ),
-        ]),
-      )
+      .where('person.ownerId', '=', userId)
       .where('asset_face.deletedAt', 'is', null)
       .where('asset_face.isVisible', 'is', true)
       .orderBy('person.isHidden', 'asc')
@@ -501,26 +486,7 @@ export class PersonRepository {
           .onRef('asset.id', '=', 'asset_face.assetId')
           .on('asset.visibility', '=', sql.lit(AssetVisibility.Timeline))
           .on('asset.deletedAt', 'is', null)
-          .on((eb) =>
-            eb.or([
-              eb('asset.ownerId', '=', asUuid(userId)),
-              inSharedAlbum(eb, userId),
-              eb.exists(
-                eb
-                  .selectFrom('album_asset')
-                  .innerJoin('album', (join) =>
-                    join.onRef('album.id', '=', 'album_asset.albumId').on('album.deletedAt', 'is', null),
-                  )
-                  .innerJoin('user_group_member', (join) =>
-                    join
-                      .onRef('user_group_member.groupId', '=', 'album.ownerGroupId')
-                      .on('user_group_member.userId', '=', asUuid(userId)),
-                  )
-                  .whereRef('album_asset.assetId', '=', 'asset.id')
-                  .where('album.ownerGroupId', 'is not', null),
-              ),
-            ]),
-          ),
+          .on(sql`"asset"."ownerId" IN ${clusterGroupMemberIds(userId)}`),
       )
       .select((eb) => eb.fn.count(eb.fn('distinct', ['asset.id'])).as('count'))
       .where('asset_face.deletedAt', 'is', null)
@@ -591,6 +557,65 @@ export class PersonRepository {
     }
 
     return this.db.insertInto('person').values(people).returningAll().execute();
+  }
+
+  async getClusterGroupUserIds(clusterGroupId: string): Promise<string[]> {
+    const users = await this.db
+      .selectFrom('user')
+      .select('user.id')
+      .where('user.clusterGroupId', '=', clusterGroupId)
+      .where('user.deletedAt', 'is', null)
+      .execute();
+    return users.map((u) => u.id);
+  }
+
+  async syncPersonName(personGroupId: string, updates: { name?: string; birthDate?: Date | string | null }): Promise<void> {
+    const set: Record<string, unknown> = {};
+    if (updates.name !== undefined) {
+      set.name = updates.name;
+    }
+    if (updates.birthDate !== undefined) {
+      set.birthDate = updates.birthDate;
+    }
+    if (Object.keys(set).length === 0) {
+      return;
+    }
+    await this.db
+      .updateTable('person')
+      .set(set)
+      .where('person.personGroupId', '=', personGroupId)
+      .execute();
+  }
+
+  async ensurePersonRecords(
+    personGroupId: string,
+    userIds: string[],
+    defaults: { name?: string; faceAssetId?: string },
+  ): Promise<void> {
+    if (userIds.length === 0) {
+      return;
+    }
+    const existing = await this.db
+      .selectFrom('person')
+      .select('person.ownerId')
+      .where('person.personGroupId', '=', personGroupId)
+      .execute();
+    const existingOwnerIds = new Set(existing.map((p) => p.ownerId));
+    const missing = userIds.filter((id) => !existingOwnerIds.has(id));
+    if (missing.length === 0) {
+      return;
+    }
+    await this.db
+      .insertInto('person')
+      .values(
+        missing.map((ownerId) => ({
+          ownerId,
+          personGroupId,
+          name: defaults.name ?? '',
+          faceAssetId: defaults.faceAssetId ?? null,
+        })),
+      )
+      .execute();
   }
 
   @GenerateSql({ params: [DummyValue.UUID] })

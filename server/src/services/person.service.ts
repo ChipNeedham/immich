@@ -223,6 +223,10 @@ export class PersonService extends BaseService {
       color,
     });
 
+    if (name !== undefined || birthDate !== undefined) {
+      await this.personRepository.syncPersonName(personGroupId, { name, birthDate });
+    }
+
     if (assetId) {
       await this.jobRepository.queue({ name: JobName.PersonGenerateThumbnail, data: { ownerId, personGroupId } });
     }
@@ -558,6 +562,16 @@ export class PersonService extends BaseService {
         });
       }
 
+      const clusterUserIds = await this.personRepository.getClusterGroupUserIds(clusterGroupId);
+      if (clusterUserIds.length > 1) {
+        const existingName = person?.name || '';
+        await this.personRepository.ensurePersonRecords(
+          personGroupId,
+          clusterUserIds.filter((id) => id !== ownerId),
+          { name: existingName, faceAssetId: face.id },
+        );
+      }
+
       this.logger.debug(`Assigning face ${id} to person group ${personGroupId}`);
       await this.personRepository.reassignFaces({ faceIds: [id], newPersonGroupId: personGroupId });
     }
@@ -670,6 +684,23 @@ export class PersonService extends BaseService {
         results.push({ id: mergeId, success: false, error: BulkIdErrorReason.UNKNOWN });
       }
     }
+
+    if (primaryPerson && results.some((r) => r.success)) {
+      const user = await this.userRepository.get(primaryPerson.ownerId, {});
+      if (user?.clusterGroupId) {
+        const clusterUserIds = await this.personRepository.getClusterGroupUserIds(user.clusterGroupId);
+        if (clusterUserIds.length > 1) {
+          await this.personRepository.ensurePersonRecords(personGroupId, clusterUserIds, {
+            name: primaryPerson.name,
+            faceAssetId: primaryPerson.faceAssetId ?? undefined,
+          });
+          if (primaryPerson.name) {
+            await this.personRepository.syncPersonName(personGroupId, { name: primaryPerson.name });
+          }
+        }
+      }
+    }
+
     return results;
   }
 
