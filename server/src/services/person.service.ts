@@ -647,6 +647,20 @@ export class PersonService extends BaseService {
 
       try {
         await this.personRepository.reassignFaces(mergeData);
+
+        const existingRecord = await this.personRepository.getByGroupId({
+          ownerId: mergePerson.ownerId,
+          personGroupId: primaryPerson.personGroupId,
+        });
+        if (!existingRecord) {
+          await this.personRepository.create({
+            ownerId: mergePerson.ownerId,
+            personGroupId: primaryPerson.personGroupId,
+            name: mergePerson.name || primaryPerson.name,
+            faceAssetId: mergePerson.faceAssetId,
+          });
+        }
+
         await this.removeAllPersonGroups([mergeId], mergePerson.ownerId);
 
         this.logger.log(`Merged ${mergeName} into ${primaryPerson.name || primaryPerson.personGroupId}`);
