@@ -329,6 +329,9 @@ const checkOtherAccess = async (access: AccessRepository, request: OtherAccessRe
     case Permission.PersonUpdate:
     case Permission.PersonDelete:
     case Permission.PersonMerge: {
+      if (auth.user.isAdmin) {
+        return ids;
+      }
       const isOwner = await access.person.checkOwnerAccess(auth.user.id, ids);
       const isGroupAlbumOwner = await access.person.checkGroupAlbumOwnerAccess(auth.user.id, setDifference(ids, isOwner));
       return setUnion(isOwner, isGroupAlbumOwner);
